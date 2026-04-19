@@ -60,6 +60,7 @@
             background: linear-gradient(135deg, var(--primary), #b47eff);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .nav-menu {
@@ -169,6 +170,7 @@
             background: linear-gradient(135deg, #fff, var(--primary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .hero p {
@@ -239,7 +241,7 @@
 
         /* Панель управления */
         .dashboard {
-            display: flex;
+            display: none;
             min-height: 100vh;
             padding-top: 80px;
         }
@@ -253,6 +255,7 @@
             top: 0;
             left: 0;
             padding-top: 80px;
+            overflow-y: auto;
         }
 
         .sidebar-header {
@@ -278,9 +281,8 @@
 
         .main-content {
             margin-left: 250px;
-            flex: 1;
             padding: 2rem;
-            width: 100%;
+            width: calc(100% - 250px);
         }
 
         .tab-content {
@@ -310,16 +312,15 @@
             width: 15px;
             height: 15px;
             border-radius: 50%;
-            animation: pulse 2s infinite;
         }
 
         .status-indicator.online {
             background: var(--success);
+            animation: pulse 2s infinite;
         }
 
         .status-indicator.offline {
             background: var(--danger);
-            animation: none;
         }
 
         @keyframes pulse {
@@ -364,6 +365,7 @@
         .info-value {
             font-weight: bold;
             color: var(--primary);
+            word-break: break-all;
         }
 
         .info-item button {
@@ -372,6 +374,8 @@
             padding: 0.3rem 0.7rem;
             border-radius: 5px;
             cursor: pointer;
+            color: white;
+            flex-shrink: 0;
         }
 
         .progress-bar {
@@ -439,6 +443,7 @@
             border: none;
             color: #0f0;
             font-family: 'Courier New', monospace;
+            outline: none;
         }
 
         .console-input button {
@@ -447,6 +452,11 @@
             border: none;
             color: white;
             cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .console-input button:hover {
+            background: var(--secondary);
         }
 
         /* Файловый менеджер */
@@ -471,6 +481,11 @@
             border-radius: 5px;
             color: white;
             cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .file-toolbar button:hover {
+            background: var(--secondary);
         }
 
         .file-list {
@@ -526,6 +541,11 @@
             border-radius: 8px;
             color: white;
             font-size: 1rem;
+            outline: none;
+        }
+
+        .setting-item input:focus, .setting-item select:focus {
+            border-color: var(--primary);
         }
 
         /* Модальные окна */
@@ -559,6 +579,11 @@
             font-size: 2rem;
             cursor: pointer;
             color: var(--light);
+            transition: color 0.3s;
+        }
+
+        .close:hover {
+            color: var(--danger);
         }
 
         .modal-content h2 {
@@ -579,11 +604,20 @@
             border-radius: 8px;
             color: white;
             font-size: 1rem;
+            outline: none;
+        }
+
+        .modal-content input:focus {
+            border-color: var(--primary);
         }
 
         .modal-content a {
             color: var(--primary);
             text-decoration: none;
+        }
+
+        .modal-content a:hover {
+            text-decoration: underline;
         }
 
         .empty-state {
@@ -620,6 +654,7 @@
             margin-bottom: 2rem;
             display: flex;
             gap: 1rem;
+            flex-wrap: wrap;
         }
 
         .plugin-toolbar button {
@@ -652,6 +687,7 @@
             
             .main-content {
                 margin-left: 200px;
+                width: calc(100% - 200px);
             }
             
             .server-info-grid {
@@ -681,6 +717,7 @@
 
             .main-content {
                 margin-left: 0;
+                width: 100%;
             }
         }
     </style>
@@ -777,7 +814,7 @@
     </section>
 
     <!-- Панель управления -->
-    <div id="dashboard" class="dashboard" style="display: none;">
+    <div id="dashboard" class="dashboard">
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2>🌌 Galaxy</h2>
@@ -816,7 +853,7 @@
                         <h3>Информация о сервере</h3>
                         <div class="info-item">
                             <span>IP адрес:</span>
-                            <span class="info-value" id="server-ip">play.servername.galaxy</span>
+                            <span class="info-value" id="server-ip">play.myserver.galaxy</span>
                             <button onclick="copyIP()">📋</button>
                         </div>
                         <div class="info-item">
@@ -825,7 +862,7 @@
                         </div>
                         <div class="info-item">
                             <span>Версия:</span>
-                            <span class="info-value">1.20.4</span>
+                            <span class="info-value" id="current-version">1.20.4</span>
                         </div>
                         <div class="info-item">
                             <span>Игроки:</span>
@@ -915,7 +952,7 @@
                 <h2>Управление игроками</h2>
                 <div class="players-container">
                     <div class="players-online">
-                        <h3>Игроки онлайн (0)</h3>
+                        <h3>Игроки онлайн (<span id="players-count">0</span>)</h3>
                         <div id="online-players" class="player-list">
                             <p class="empty-state">Нет игроков онлайн</p>
                         </div>
@@ -952,15 +989,67 @@
                     <div class="setting-group">
                         <h3>Основные настройки</h3>
                         <div class="setting-item">
+                            <label>Название сервера:</label>
+                            <input type="text" id="server-name" value="MyServer" placeholder="Введите название" onchange="updateServerName()">
+                        </div>
+                        <div class="setting-item">
                             <label>Версия Minecraft:</label>
                             <select id="mc-version">
-                                <option>1.20.4 (Latest)</option>
-                                <option>1.20.2</option>
-                                <option>1.19.4</option>
-                                <option>1.18.2</option>
-                                <option>1.16.5</option>
-                                <option>1.12.2</option>
-                                <option>1.8.9</option>
+                                <optgroup label="Последние версии">
+                                    <option selected>1.20.4</option>
+                                    <option>1.20.3</option>
+                                    <option>1.20.2</option>
+                                    <option>1.20.1</option>
+                                    <option>1.20</option>
+                                </optgroup>
+                                <optgroup label="1.19.x">
+                                    <option>1.19.4</option>
+                                    <option>1.19.3</option>
+                                    <option>1.19.2</option>
+                                    <option>1.19.1</option>
+                                    <option>1.19</option>
+                                </optgroup>
+                                <optgroup label="1.18.x">
+                                    <option>1.18.2</option>
+                                    <option>1.18.1</option>
+                                    <option>1.18</option>
+                                </optgroup>
+                                <optgroup label="1.17.x">
+                                    <option>1.17.1</option>
+                                    <option>1.17</option>
+                                </optgroup>
+                                <optgroup label="1.16.x">
+                                    <option>1.16.5</option>
+                                    <option>1.16.4</option>
+                                    <option>1.16.3</option>
+                                    <option>1.16.2</option>
+                                    <option>1.16.1</option>
+                                </optgroup>
+                                <optgroup label="1.15.x">
+                                    <option>1.15.2</option>
+                                    <option>1.15.1</option>
+                                </optgroup>
+                                <optgroup label="1.14.x">
+                                    <option>1.14.4</option>
+                                    <option>1.14.3</option>
+                                </optgroup>
+                                <optgroup label="1.13.x">
+                                    <option>1.13.2</option>
+                                    <option>1.13.1</option>
+                                </optgroup>
+                                <optgroup label="1.12.x">
+                                    <option>1.12.2</option>
+                                    <option>1.12.1</option>
+                                </optgroup>
+                                <optgroup label="Старые версии">
+                                    <option>1.11.2</option>
+                                    <option>1.10.2</option>
+                                    <option>1.9.4</option>
+                                    <option>1.8.9</option>
+                                    <option>1.7.10</option>
+                                    <option>1.6.4</option>
+                                    <option>1.5.2</option>
+                                </optgroup>
                             </select>
                         </div>
                         <div class="setting-item">
@@ -968,19 +1057,17 @@
                             <select id="server-type">
                                 <option>Vanilla</option>
                                 <option>Spigot</option>
-                                <option>Paper</option>
+                                <option selected>Paper</option>
+                                <option>Purpur</option>
                                 <option>Forge</option>
                                 <option>Fabric</option>
-                                <option>Purpur</option>
+                                <option>Mohist</option>
+                                <option>Catserver</option>
                             </select>
                         </div>
                         <div class="setting-item">
                             <label>Максимум игроков:</label>
                             <input type="number" id="max-players" value="100" min="1" max="1000">
-                        </div>
-                        <div class="setting-item">
-                            <label>Название сервера:</label>
-                            <input type="text" id="server-name" value="My Galaxy Server">
                         </div>
                         <div class="setting-item">
                             <label>MOTD:</label>
@@ -989,7 +1076,7 @@
                         <div class="setting-item">
                             <label>Режим игры:</label>
                             <select id="gamemode">
-                                <option>Survival</option>
+                                <option selected>Survival</option>
                                 <option>Creative</option>
                                 <option>Adventure</option>
                                 <option>Spectator</option>
@@ -1000,14 +1087,14 @@
                             <select id="difficulty">
                                 <option>Peaceful</option>
                                 <option>Easy</option>
-                                <option>Normal</option>
+                                <option selected>Normal</option>
                                 <option>Hard</option>
                             </select>
                         </div>
                         <div class="setting-item">
                             <label>PVP:</label>
                             <select id="pvp">
-                                <option>Включен</option>
+                                <option selected>Включен</option>
                                 <option>Выключен</option>
                             </select>
                         </div>
