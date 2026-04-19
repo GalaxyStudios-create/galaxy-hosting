@@ -3,76 +3,345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GalaxyHosting | Твой бесплатный Minecraft сервер</title>
+    <title>GalaxyHosting - Бесплатный хостинг Minecraft серверов</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-    <div class="sidebar">
-        <div class="logo">
-            <i class="fas fa-user-rocket"></i> Galaxy<span>Host</span>
+    <!-- Навигация -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-brand">
+                <span class="logo">🌌 GalaxyHosting</span>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#home">Главная</a></li>
+                <li><a href="#features">Возможности</a></li>
+                <li><a href="#pricing">Тарифы</a></li>
+                <li><button class="btn-login" onclick="showLogin()">Войти</button></li>
+                <li><button class="btn-register" onclick="showRegister()">Регистрация</button></li>
+            </ul>
         </div>
-        <nav>
-            <a href="#" class="active"><i class="fas fa-server"></i> Сервер</a>
-            <a href="#"><i class="fas fa-terminal"></i> Консоль</a>
-            <a href="#"><i class="fas fa-file-code"></i> Файлы</a>
-            <a href="#"><i class="fas fa-users"></i> Игроки</a>
-            <a href="#"><i class="fas fa-puzzle-piece"></i> Плагины</a>
-            <a href="#"><i class="fas fa-cogs"></i> Настройки</a>
-        </nav>
+    </nav>
+
+    <!-- Главный экран -->
+    <section id="home" class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Бесплатный хостинг для Minecraft серверов</h1>
+                <p>Создай свой сервер за 30 секунд. Полностью бесплатно!</p>
+                <div class="hero-stats">
+                    <div class="stat">
+                        <h3>6 ГБ</h3>
+                        <p>Оперативной памяти</p>
+                    </div>
+                    <div class="stat">
+                        <h3>∞</h3>
+                        <p>Слотов</p>
+                    </div>
+                    <div class="stat">
+                        <h3>24/7</h3>
+                        <p>Поддержка</p>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="showRegister()">Создать сервер бесплатно</button>
+            </div>
+        </div>
+        <div class="stars"></div>
+    </section>
+
+    <!-- Возможности -->
+    <section id="features" class="features">
+        <div class="container">
+            <h2>Возможности GalaxyHosting</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>Мгновенный запуск</h3>
+                    <p>Сервер запускается за 30 секунд</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💾</div>
+                    <h3>6 ГБ RAM</h3>
+                    <p>Достаточно для любых модов</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3>Полный контроль</h3>
+                    <p>FTP, консоль, файловый менеджер</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🌍</div>
+                    <h3>Все версии</h3>
+                    <p>От 1.0 до последней версии</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🎮</div>
+                    <h3>Моды и плагины</h3>
+                    <p>Forge, Fabric, Spigot, Paper</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>DDoS защита</h3>
+                    <p>Безопасность вашего сервера</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Статистика</h3>
+                    <p>Мониторинг в реальном времени</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Автобэкапы</h3>
+                    <p>Сохранность ваших миров</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Панель управления (скрыта по умолчанию) -->
+    <div id="dashboard" class="dashboard" style="display: none;">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>🌌 GalaxyHosting</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li onclick="showTab('server')">🖥️ Сервер</li>
+                <li onclick="showTab('console')">📝 Консоль</li>
+                <li onclick="showTab('files')">📁 Файлы</li>
+                <li onclick="showTab('players')">👥 Игроки</li>
+                <li onclick="showTab('plugins')">🔌 Плагины</li>
+                <li onclick="showTab('settings')">⚙️ Настройки</li>
+                <li onclick="showTab('backup')">💾 Бэкапы</li>
+                <li onclick="logout()">🚪 Выход</li>
+            </ul>
+        </div>
+
+        <div class="main-content">
+            <!-- Вкладка сервера -->
+            <div id="tab-server" class="tab-content active">
+                <div class="server-header">
+                    <h1>Мой сервер Minecraft</h1>
+                    <div class="server-status">
+                        <span class="status-indicator offline"></span>
+                        <span id="server-status-text">Оффлайн</span>
+                    </div>
+                </div>
+
+                <div class="server-controls">
+                    <button class="btn-success" onclick="startServer()">▶ Запустить</button>
+                    <button class="btn-danger" onclick="stopServer()">⏹ Остановить</button>
+                    <button class="btn-warning" onclick="restartServer()">🔄 Перезапустить</button>
+                </div>
+
+                <div class="server-info-grid">
+                    <div class="info-card">
+                        <h3>Информация о сервере</h3>
+                        <div class="info-item">
+                            <span>IP адрес:</span>
+                            <span class="info-value" id="server-ip">galaxy.hosting:25565</span>
+                            <button onclick="copyIP()">📋</button>
+                        </div>
+                        <div class="info-item">
+                            <span>Версия:</span>
+                            <span class="info-value">1.20.4</span>
+                        </div>
+                        <div class="info-item">
+                            <span>Игроки онлайн:</span>
+                            <span class="info-value" id="players-online">0/100</span>
+                        </div>
+                        <div class="info-item">
+                            <span>RAM:</span>
+                            <span class="info-value" id="ram-usage">0 MB / 6144 MB</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress" id="ram-progress" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="info-card">
+                        <h3>Быстрые действия</h3>
+                        <button class="action-btn" onclick="showTab('console')">📝 Открыть консоль</button>
+                        <button class="action-btn" onclick="showTab('files')">📁 Файловый менеджер</button>
+                        <button class="action-btn" onclick="showTab('backup')">💾 Создать бэкап</button>
+                        <button class="action-btn" onclick="showTab('settings')">⚙️ Настройки сервера</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка консоли -->
+            <div id="tab-console" class="tab-content">
+                <h2>Консоль сервера</h2>
+                <div class="console-container">
+                    <div class="console-output" id="console-output">
+                        <div class="console-line">[GalaxyHosting] Консоль готова к работе</div>
+                        <div class="console-line">[GalaxyHosting] Запустите сервер для просмотра логов</div>
+                    </div>
+                    <div class="console-input">
+                        <input type="text" id="console-command" placeholder="Введите команду..." onkeypress="handleCommand(event)">
+                        <button onclick="sendCommand()">Отправить</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка файлов -->
+            <div id="tab-files" class="tab-content">
+                <h2>Файловый менеджер</h2>
+                <div class="file-manager">
+                    <div class="file-toolbar">
+                        <button onclick="createFile()">➕ Создать файл</button>
+                        <button onclick="createFolder()">📁 Создать папку</button>
+                        <button onclick="uploadFile()">⬆️ Загрузить</button>
+                    </div>
+                    <div class="file-list">
+                        <div class="file-item folder" onclick="openFolder('plugins')">
+                            <span>📁 plugins</span>
+                        </div>
+                        <div class="file-item folder" onclick="openFolder('world')">
+                            <span>📁 world</span>
+                        </div>
+                        <div class="file-item file" onclick="editFile('server.properties')">
+                            <span>📄 server.properties</span>
+                        </div>
+                        <div class="file-item file" onclick="editFile('ops.json')">
+                            <span>📄 ops.json</span>
+                        </div>
+                        <div class="file-item file" onclick="editFile('whitelist.json')">
+                            <span>📄 whitelist.json</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка игроков -->
+            <div id="tab-players" class="tab-content">
+                <h2>Управление игроками</h2>
+                <div class="players-container">
+                    <div class="players-online">
+                        <h3>Игроки онлайн (0)</h3>
+                        <div id="online-players" class="player-list">
+                            <p class="empty-state">Нет игроков онлайн</p>
+                        </div>
+                    </div>
+                    <div class="player-actions">
+                        <h3>Действия</h3>
+                        <button class="action-btn" onclick="showWhitelist()">📋 Белый список</button>
+                        <button class="action-btn" onclick="showBanlist()">🚫 Список банов</button>
+                        <button class="action-btn" onclick="showOps()">👑 OP права</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка плагинов -->
+            <div id="tab-plugins" class="tab-content">
+                <h2>Плагины и моды</h2>
+                <div class="plugins-container">
+                    <div class="plugin-toolbar">
+                        <button onclick="installPlugin()">⬇️ Установить плагин</button>
+                        <button onclick="uploadPlugin()">⬆️ Загрузить плагин</button>
+                    </div>
+                    <div class="plugin-list">
+                        <p class="empty-state">Плагины не установлены. Загрузите свои или установите из магазина.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Вкладка настроек -->
+            <div id="tab-settings" class="tab-content">
+                <h2>Настройки сервера</h2>
+                <div class="settings-container">
+                    <div class="setting-group">
+                        <h3>Основные настройки</h3>
+                        <div class="setting-item">
+                            <label>Версия Minecraft:</label>
+                            <select id="mc-version">
+                                <option>1.20.4</option>
+                                <option>1.20.2</option>
+                                <option>1.19.4</option>
+                                <option>1.18.2</option>
+                                <option>1.16.5</option>
+                                <option>1.12.2</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Тип сервера:</label>
+                            <select id="server-type">
+                                <option>Vanilla</option>
+                                <option>Spigot</option>
+                                <option>Paper</option>
+                                <option>Forge</option>
+                                <option>Fabric</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Максимум игроков:</label>
+                            <input type="number" value="100" min="1" max="1000">
+                        </div>
+                        <div class="setting-item">
+                            <label>Режим игры:</label>
+                            <select>
+                                <option>Survival</option>
+                                <option>Creative</option>
+                                <option>Adventure</option>
+                                <option>Spectator</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label>Сложность:</label>
+                            <select>
+                                <option>Peaceful</option>
+                                <option>Easy</option>
+                                <option>Normal</option>
+                                <option>Hard</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn-primary" onclick="saveSettings()">💾 Сохранить настройки</button>
+                </div>
+            </div>
+
+            <!-- Вкладка бэкапов -->
+            <div id="tab-backup" class="tab-content">
+                <h2>Бэкапы сервера</h2>
+                <div class="backup-container">
+                    <button class="btn-primary" onclick="createBackup()">💾 Создать бэкап сейчас</button>
+                    <div class="backup-list">
+                        <h3>Список бэкапов</h3>
+                        <p class="empty-state">Бэкапы отсутствуют</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <main class="main-content">
-        <header>
-            <div class="server-status">
-                <span id="status-indicator" class="status-off"></span>
-                Статус: <span id="status-text">Оффлайн</span>
-            </div>
-            <div class="user-profile">
-                <span>Администратор</span>
-                <i class="fas fa-user-circle"></i>
-            </div>
-        </header>
+    <!-- Модальное окно входа -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('loginModal')">&times;</span>
+            <h2>Вход в аккаунт</h2>
+            <form onsubmit="login(event)">
+                <input type="text" placeholder="Имя пользователя" required>
+                <input type="password" placeholder="Пароль" required>
+                <button type="submit" class="btn-primary">Войти</button>
+            </form>
+            <p>Нет аккаунта? <a href="#" onclick="closeModal('loginModal'); showRegister()">Зарегистрироваться</a></p>
+        </div>
+    </div>
 
-        <section class="dashboard">
-            <div class="action-buttons">
-                <button id="btn-start" class="btn btn-start"><i class="fas fa-play"></i> Запустить</button>
-                <button id="btn-stop" class="btn btn-stop" disabled><i class="fas fa-stop"></i> Стоп</button>
-                <button id="btn-restart" class="btn btn-restart" disabled><i class="fas fa-redo"></i> Рестарт</button>
-            </div>
-
-            <div class="stats-grid">
-                <div class="card">
-                    <i class="fas fa-memory"></i>
-                    <h3>Оперативная память</h3>
-                    <p><span>6144 MB</span> / 6144 MB</p>
-                    <div class="progress-bar"><div class="progress" style="width: 0%" id="ram-progress"></div></div>
-                </div>
-                <div class="card">
-                    <i class="fas fa-microchip"></i>
-                    <h3>Процессор (CPU)</h3>
-                    <p id="cpu-load">0%</p>
-                    <div class="progress-bar"><div class="progress" style="width: 0%" id="cpu-progress"></div></div>
-                </div>
-                <div class="card">
-                    <i class="fas fa-hdd"></i>
-                    <h3>Диск (SSD)</h3>
-                    <p>10 ГБ</p>
-                </div>
-            </div>
-
-            <div class="console-container">
-                <div class="console-header">Консоль сервера</div>
-                <div class="console-body" id="console">
-                    <p class="msg">[System] Ожидание запуска сервера...</p>
-                </div>
-                <div class="console-input">
-                    <span>></span>
-                    <input type="text" placeholder="Введите команду..." id="cmd-input">
-                </div>
-            </div>
-        </section>
-    </main>
+    <!-- Модальное окно регистрации -->
+    <div id="registerModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('registerModal')">&times;</span>
+            <h2>Регистрация</h2>
+            <form onsubmit="register(event)">
+                <input type="text" placeholder="Имя пользователя" required>
+                <input type="email" placeholder="Email" required>
+                <input type="password" placeholder="Пароль" required>
+                <input type="password" placeholder="Повторите пароль" required>
+                <button type="submit" class="btn-primary">Создать аккаунт</button>
+            </form>
+            <p>Уже есть аккаунт? <a href="#" onclick="closeModal('registerModal'); showLogin()">Войти</a></p>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
