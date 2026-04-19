@@ -1,555 +1,397 @@
-// ========================================
-// GalaxyHosting - JavaScript
-// ========================================
+// STATE
+let serverOnline = true;
+let currentPath = '/home/server/';
+const banned = [];
+let notifTimer;
 
-// ===== Инициализация =====
-document.addEventListener('DOMContentLoaded', () => {
-    createParticles();
-    animateCounters();
-    loadPlugins();
-    loadPlayers();
-    initScrollEffects();
-});
+// ==================== NAVIGATION ====================
+function goPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
 
-// ===== Частицы =====
-function createParticles() {
-    const container = document.getElementById('particles');
-    const count = 50;
+  const titles = {
+    dashboard: '📊 Панель управления',
+    console: '💻 Консоль сервера',
+    players: '👥 Управление игроками',
+    settings: '⚙️ Настройки сервера',
+    plugins: '🔌 Плагины',
+    mods: '📦 Моды',
+    worlds: '🌍 Миры',
+    files: '📂 Файловый менеджер',
+    editor: '📝 Редактор кода'
+  };
 
-    for (let i = 0; i < count; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        const size = Math.random() * 4 + 1;
-        particle.style.width = size + 'px';
-        particle.style.height = size + 'px';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDuration = (Math.random() * 15 + 10) + 's';
-        particle.style.animationDelay = (Math.random() * 10) + 's';
-
-        const colors = ['#6c5ce7', '#00cec9', '#a29bfe', '#81ecec', '#ffffff'];
-        particle.style.background = colors[Math.floor(Math.random() * colors.length)];
-        particle.style.opacity = Math.random() * 0.4 + 0.1;
-
-        container.appendChild(particle);
-    }
+  document.getElementById('pageTitle').textContent = titles[id] || id;
+  closeSidebar();
 }
 
-// ===== Навигация =====
-function toggleMenu() {
-    const navLinks = document.getElementById('navLinks');
-    const hamburger = document.getElementById('hamburger');
-    navLinks.classList.toggle('active');
-    hamburger.classList.toggle('active');
+// ==================== SIDEBAR ====================
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
 }
 
-// Скролл навигация
-function initScrollEffects() {
-    const navbar = document.getElementById('navbar');
-    const scrollTopBtn = document.getElementById('scrollTop');
-
-    window.addEventListener('scroll', () => {
-        // Navbar
-        if (window.scrollY > 50) {
-            navbar.classList.add('scrolled');
-        } else {
-            navbar.classList.remove('scrolled');
-        }
-
-        // Scroll to top button
-        if (window.scrollY > 300) {
-            scrollTopBtn.classList.add('visible');
-        } else {
-            scrollTopBtn.classList.remove('visible');
-        }
-
-        // Animate cards on scroll
-        animateOnScroll();
-    });
-
-    // Закрыть меню при клике на ссылку
-    document.querySelectorAll('.nav-links a').forEach(link => {
-        link.addEventListener('click', () => {
-            document.getElementById('navLinks').classList.remove('active');
-            document.getElementById('hamburger').classList.remove('active');
-        });
-    });
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
 }
 
-// ===== Анимация при скролле =====
-function animateOnScroll() {
-    const elements = document.querySelectorAll('.feature-card, .plan-card, .step, .faq-item');
-    elements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if (rect.top < window.innerHeight - 100) {
-            el.style.opacity = '1';
-            el.style.transform = el.classList.contains('plan-card') && el.classList.contains('popular')
-                ? 'scale(1.05)'
-                : 'translateY(0)';
-        }
-    });
+// ==================== SERVER CONTROLS ====================
+function startServer() {
+  serverOnline = true;
+  updateStatus();
+  addConsole('ok', '[INFO] Server started successfully!');
+  notify('▶ Сервер запущен!');
 }
 
-// ===== Счетчики =====
-function animateCounters() {
-    const counters = document.querySelectorAll('.stat-number');
-
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const target = parseInt(entry.target.getAttribute('data-target'));
-                animateCounter(entry.target, target);
-                observer.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.5 });
-
-    counters.forEach(counter => observer.observe(counter));
+function stopServer() {
+  serverOnline = false;
+  updateStatus();
+  addConsole('warn', '[INFO] Server stopped.');
+  notify('⏹ Сервер остановлен');
 }
 
-function animateCounter(element, target) {
-    let current = 0;
-    const increment = target / 60;
-    const isPercentage = target <= 100;
-
-    const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-            current = target;
-            clearInterval(timer);
-        }
-        element.textContent = Math.floor(current).toLocaleString() + (isPercentage && target === 99 ? '%' : '+');
-    }, 25);
+function restartServer() {
+  serverOnline = false;
+  updateStatus();
+  addConsole('warn', '[INFO] Server restarting...');
+  notify('🔄 Перезапуск...');
+  setTimeout(() => {
+    serverOnline = true;
+    updateStatus();
+    addConsole('ok', '[INFO] Server restarted successfully!');
+    notify('✅ Сервер перезапущен!');
+  }, 2000);
 }
 
-// ===== Модальные окна =====
-function openModal(id) {
-    document.getElementById(id).classList.add('active');
-    document.body.style.overflow = 'hidden';
+function updateStatus() {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  const dash = document.getElementById('dashStatus');
+
+  if (serverOnline) {
+    dot.className = 'status-dot on';
+    txt.textContent = 'Онлайн';
+    if (dash) { dash.textContent = 'Онлайн'; dash.className = 'value green'; }
+  } else {
+    dot.className = 'status-dot off';
+    txt.textContent = 'Оффлайн';
+    if (dash) { dash.textContent = 'Оффлайн'; dash.className = 'value red'; }
+  }
 }
 
-function closeModal(id) {
-    document.getElementById(id).classList.remove('active');
-    document.body.style.overflow = '';
+// ==================== CONSOLE ====================
+function addConsole(cls, text) {
+  const out = document.getElementById('consoleOutput');
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = text;
+  out.appendChild(d);
+  out.scrollTop = out.scrollHeight;
 }
 
-// Закрыть по клику на оверлей
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-    overlay.addEventListener('click', (e) => {
-        if (e.target === overlay) {
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    });
-});
-
-// ESC для закрытия модалок
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
-            modal.classList.remove('active');
-        });
-        document.body.style.overflow = '';
-    }
-});
-
-// ===== Формы =====
-function handleLogin(e) {
-    e.preventDefault();
-    showNotification('Добро пожаловать! Перенаправление в панель...', 'success');
-    closeModal('loginModal');
-
-    setTimeout(() => {
-        document.getElementById('panel').scrollIntoView({ behavior: 'smooth' });
-    }, 1500);
-}
-
-function handleRegister(e) {
-    e.preventDefault();
-    showNotification('🎉 Аккаунт создан! Ваш сервер запускается...', 'success');
-    closeModal('registerModal');
-
-    setTimeout(() => {
-        showNotification('✅ Сервер успешно создан! IP: myserver.galaxyhost.net', 'success');
-    }, 2000);
-
-    setTimeout(() => {
-        document.getElementById('panel').scrollIntoView({ behavior: 'smooth' });
-    }, 2500);
-}
-
-// ===== Уведомления =====
-function showNotification(message, type = 'info') {
-    const container = document.getElementById('notifications');
-    const notification = document.createElement('div');
-    notification.className = `notification ${type}`;
-
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
-
-    notification.innerHTML = `<i class="fas ${icons[type]}"></i><span>${message}</span>`;
-    container.appendChild(notification);
-
-    setTimeout(() => {
-        notification.style.animation = 'slideOut 0.3s ease forwards';
-        setTimeout(() => notification.remove(), 300);
-    }, 4000);
-}
-
-// ===== FAQ =====
-function toggleFaq(element) {
-    const isActive = element.classList.contains('active');
-
-    // Закрыть все
-    document.querySelectorAll('.faq-item').forEach(item => {
-        item.classList.remove('active');
-    });
-
-    // Открыть текущий (если не был активен)
-    if (!isActive) {
-        element.classList.add('active');
-    }
-}
-
-// ===== Панель управления =====
-
-// Переключение табов
-function switchTab(event, tabName) {
-    event.preventDefault();
-
-    // Деактивировать все навигационные элементы
-    document.querySelectorAll('.panel-nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-
-    // Активировать текущий
-    event.currentTarget.classList.add('active');
-
-    // Скрыть все табы
-    document.querySelectorAll('.panel-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-
-    // Показать нужный таб
-    document.getElementById('tab-' + tabName).classList.add('active');
-}
-
-// Консоль
-function handleConsoleInput(event) {
-    if (event.key === 'Enter') {
-        sendCommand();
-    }
+function clearConsole() {
+  document.getElementById('consoleOutput').innerHTML = '';
+  notify('🗑️ Консоль очищена');
 }
 
 function sendCommand() {
-    const input = document.getElementById('consoleInput');
-    const output = document.getElementById('consoleOutput');
-    const command = input.value.trim();
+  const inp = document.getElementById('consoleInput');
+  const cmd = inp.value.trim();
+  if (!cmd) return;
+  addConsole('', '> ' + cmd);
+  inp.value = '';
 
-    if (!command) return;
+  const responses = {
+    'help': 'Available: help, list, stop, say, gamemode, difficulty, seed, weather, time, give, tp, ban, kick, op',
+    'list': 'There are 3/20 players online: Alex_Gamer, ProBuilder, CraftQueen',
+    'stop': 'Stopping the server...',
+    'seed': 'Seed: [-123456789]',
+    'tps': 'TPS: 20.0, 20.0, 19.8',
+    'time set day': 'Set the time to 1000',
+    'weather clear': 'Changing to clear weather',
+    'plugins': 'Plugins (3): WorldGuard, WorldEdit, EssentialsX',
+    'version': 'This server is running Paper version git-Paper-196',
+  };
 
-    // Добавить команду
-    const cmdLine = document.createElement('div');
-    cmdLine.className = 'console-line command';
-    cmdLine.textContent = `> ${command}`;
-    output.appendChild(cmdLine);
-
-    // Обработать команду
-    setTimeout(() => {
-        const response = processCommand(command);
-        const responseLine = document.createElement('div');
-        responseLine.className = `console-line ${response.type}`;
-        responseLine.textContent = response.text;
-        output.appendChild(responseLine);
-        output.scrollTop = output.scrollHeight;
-    }, 200);
-
-    input.value = '';
-    output.scrollTop = output.scrollHeight;
+  setTimeout(() => {
+    const resp = responses[cmd.toLowerCase()] || `Unknown command: "${cmd}". Type "help" for help.`;
+    addConsole(responses[cmd.toLowerCase()] ? 'info' : 'warn', resp);
+  }, 300);
 }
 
-function processCommand(cmd) {
-    const command = cmd.toLowerCase();
-
-    const responses = {
-        'help': { text: '[Server] Команды: help, list, say, time, weather, gamemode, tp, give, op, ban, kick, stop, restart', type: 'info' },
-        'list': { text: '[Server] Онлайн (12/50): Player123, Steve, Alex, Notch, Dream, Technoblade, Herobrine, xXGamerXx, CoolBuilder, RedstoneKing, DiamondMiner, ProPvP', type: 'info' },
-        'stop': { text: '[Server] Останавливаем сервер...', type: 'warn' },
-        'restart': { text: '[Server] Перезапуск сервера...', type: 'warn' },
-        'time set day': { text: '[Server] Время установлено на 1000 (день)', type: 'success' },
-        'time set night': { text: '[Server] Время установлено на 13000 (ночь)', type: 'success' },
-        'weather clear': { text: '[Server] Погода изменена на ясную', type: 'success' },
-        'weather rain': { text: '[Server] Погода изменена на дождливую', type: 'success' },
-        'seed': { text: '[Server] Сид мира: -4823947291038571', type: 'info' },
-        'difficulty': { text: '[Server] Текущая сложность: Normal', type: 'info' },
-        'tps': { text: '[Server] TPS: 19.98 (отлично)', type: 'success' },
-        'gc': { text: '[Server] Сборка мусора... Освобождено 234 MB', type: 'success' },
-        'plugins': { text: '[Server] Плагины (8): EssentialsX, WorldEdit, WorldGuard, Vault, LuckPerms, PlaceholderAPI, ViaVersion, SkinsRestorer', type: 'info' },
-        'version': { text: '[Server] Paper 1.20.4 (Git-123abc)', type: 'info' },
-        'whitelist list': { text: '[Server] Whitelist отключен. 0 игроков в белом списке.', type: 'info' },
-        'ban herobrine': { text: '[Server] Игрок Herobrine забанен.', type: 'success' },
-        'kick herobrine': { text: '[Server] Игрок Herobrine кикнут.', type: 'success' },
-    };
-
-    // Проверяем say
-    if (command.startsWith('say ')) {
-        return { text: `[Server] [Server] ${cmd.substring(4)}`, type: 'info' };
-    }
-
-    // Проверяем gamemode
-    if (command.startsWith('gamemode ')) {
-        const mode = command.split(' ')[1];
-        const modes = { 'survival': 'Survival', 'creative': 'Creative', 'adventure': 'Adventure', 'spectator': 'Spectator', '0': 'Survival', '1': 'Creative', '2': 'Adventure', '3': 'Spectator' };
-        if (modes[mode]) {
-            return { text: `[Server] Режим игры изменён на ${modes[mode]}`, type: 'success' };
-        }
-    }
-
-    // Проверяем op
-    if (command.startsWith('op ')) {
-        return { text: `[Server] Игрок ${cmd.split(' ')[1]} теперь оператор`, type: 'success' };
-    }
-
-    if (responses[command]) {
-        return responses[command];
-    }
-
-    return { text: `[Server] Неизвестная команда: "${cmd}". Введите "help" для помощи.`, type: 'error' };
-}
-
-// Действия с сервером
-function serverAction(action) {
-    const statusElement = document.querySelector('.server-status');
-    const statusText = statusElement.querySelector('span:last-child');
-
-    switch (action) {
-        case 'start':
-            statusElement.className = 'server-status starting';
-            statusText.textContent = 'Запускается...';
-            showNotification('Сервер запускается...', 'info');
-            setTimeout(() => {
-                statusElement.className = 'server-status online';
-                statusText.textContent = 'Онлайн';
-                showNotification('Сервер запущен!', 'success');
-            }, 3000);
-            break;
-        case 'stop':
-            statusElement.className = 'server-status offline';
-            statusText.textContent = 'Оффлайн';
-            showNotification('Сервер остановлен', 'warning');
-            break;
-        case 'restart':
-            statusElement.className = 'server-status starting';
-            statusText.textContent = 'Перезапуск...';
-            showNotification('Сервер перезапускается...', 'info');
-            setTimeout(() => {
-                statusElement.className = 'server-status online';
-                statusText.textContent = 'Онлайн';
-                showNotification('Сервер перезапущен!', 'success');
-            }, 4000);
-            break;
-    }
-}
-
-// ===== Плагины =====
-const pluginsData = [
-    { name: 'EssentialsX', icon: '⚡', version: 'v2.20.1', desc: 'Базовые команды для сервера: телепорт, дом, варп, экономика и многое другое', downloads: '12.5M', installed: true },
-    { name: 'WorldEdit', icon: '🏗️', version: 'v7.2.15', desc: 'Мощный инструмент для редактирования мира прямо в игре', downloads: '8.3M', installed: true },
-    { name: 'WorldGuard', icon: '🛡️', version: 'v7.0.9', desc: 'Защита регионов от гриферов. Настройка флагов и прав', downloads: '7.1M', installed: false },
-    { name: 'Vault', icon: '💰', version: 'v1.7.3', desc: 'API для экономики и прав. Необходим для многих плагинов', downloads: '9.8M', installed: true },
-    { name: 'LuckPerms', icon: '🔑', version: 'v5.4.102', desc: 'Продвинутая система прав и групп с веб-редактором', downloads: '6.2M', installed: true },
-    { name: 'PlaceholderAPI', icon: '📝', version: 'v2.11.5', desc: 'API для плейсхолдеров. Используется множеством плагинов', downloads: '5.4M', installed: false },
-    { name: 'ViaVersion', icon: '🔄', version: 'v4.9.2', desc: 'Поддержка подключения с разных версий клиента', downloads: '4.7M', installed: false },
-    { name: 'SkinsRestorer', icon: '👤', version: 'v15.0.7', desc: 'Восстановление скинов для пиратских клиентов', downloads: '3.8M', installed: false },
-    { name: 'Citizens', icon: '🤖', version: 'v2.0.33', desc: 'Создание NPC для квестов, магазинов и декораций', downloads: '3.2M', installed: false },
-    { name: 'mcMMO', icon: '⚔️', version: 'v2.1.226', desc: 'RPG система прокачки навыков для Minecraft', downloads: '2.9M', installed: false },
-    { name: 'GriefPrevention', icon: '🏠', version: 'v16.18.1', desc: 'Защита построек через систему клеймов', downloads: '4.1M', installed: false },
-    { name: 'Dynmap', icon: '🗺️', version: 'v3.6', desc: 'Интерактивная веб-карта вашего мира в реальном времени', downloads: '2.7M', installed: false },
-    { name: 'AuthMe', icon: '🔐', version: 'v5.6.0', desc: 'Система авторизации для пиратских серверов', downloads: '5.1M', installed: false },
-    { name: 'Multiverse-Core', icon: '🌐', version: 'v4.3.12', desc: 'Управление несколькими мирами на одном сервере', downloads: '3.5M', installed: false },
-    { name: 'HolographicDisplays', icon: '✨', version: 'v3.0.1', desc: 'Создание голографических надписей в мире', downloads: '2.3M', installed: false },
-    { name: 'TAB', icon: '📊', version: 'v4.0.9', desc: 'Настройка TAB-списка, префиксов и суффиксов', downloads: '1.8M', installed: false },
-];
-
-function loadPlugins() {
-    const grid = document.getElementById('pluginsGrid');
-    if (!grid) return;
-    grid.innerHTML = '';
-
-    pluginsData.forEach(plugin => {
-        const card = document.createElement('div');
-        card.className = 'plugin-card';
-        card.innerHTML = `
-            <div class="plugin-header">
-                <div class="plugin-icon">${plugin.icon}</div>
-                <div>
-                    <div class="plugin-name">${plugin.name}</div>
-                    <div class="plugin-version">${plugin.version}</div>
-                </div>
-            </div>
-            <div class="plugin-desc">${plugin.desc}</div>
-            <div class="plugin-footer">
-                <span class="plugin-downloads"><i class="fas fa-download"></i> ${plugin.downloads}</span>
-                <button class="plugin-install-btn ${plugin.installed ? 'installed' : ''}" 
-                        onclick="installPlugin(this, '${plugin.name}')"
-                        ${plugin.installed ? 'disabled' : ''}>
-                    ${plugin.installed ? '✓ Установлен' : 'Установить'}
-                </button>
-            </div>
-        `;
-        grid.appendChild(card);
-    });
-}
-
-function installPlugin(btn, name) {
-    if (btn.classList.contains('installed')) return;
-
-    btn.textContent = 'Установка...';
-    btn.disabled = true;
-
-    setTimeout(() => {
-        btn.textContent = '✓ Установлен';
-        btn.classList.add('installed');
-        showNotification(`Плагин ${name} успешно установлен!`, 'success');
-
-        // Добавить в консоль
-        const output = document.getElementById('consoleOutput');
-        const line = document.createElement('div');
-        line.className = 'console-line success';
-        line.textContent = `[Server] Плагин ${name} установлен. Перезагрузка не требуется.`;
-        output.appendChild(line);
-    }, 1500);
-}
-
-function searchPlugins() {
-    const query = document.getElementById('pluginSearch').value.toLowerCase();
-    const cards = document.querySelectorAll('.plugin-card');
-
-    cards.forEach((card, index) => {
-        const name = pluginsData[index].name.toLowerCase();
-        const desc = pluginsData[index].desc.toLowerCase();
-        if (name.includes(query) || desc.includes(query)) {
-            card.style.display = '';
-        } else {
-            card.style.display = 'none';
-        }
-    });
-}
-
-// ===== Игроки =====
-const playersData = [
-    { name: 'Player123', ping: 23, op: true },
-    { name: 'Steve', ping: 45 },
-    { name: 'Alex', ping: 67 },
-    { name: 'Notch', ping: 12 },
-    { name: 'Dream', ping: 89 },
-    { name: 'Technoblade', ping: 34 },
-    { name: 'Herobrine', ping: 666 },
-    { name: 'xXGamerXx', ping: 56 },
-    { name: 'CoolBuilder', ping: 78 },
-    { name: 'RedstoneKing', ping: 43 },
-    { name: 'DiamondMiner', ping: 29 },
-    { name: 'ProPvP', ping: 91 },
-];
-
-function loadPlayers() {
-    const list = document.getElementById('playersList');
-    if (!list) return;
-    list.innerHTML = '';
-
-    playersData.forEach(player => {
-        const card = document.createElement('div');
-        card.className = 'player-card';
-        card.innerHTML = `
-            <div class="player-head">${player.name[0]}</div>
-            <div class="player-info">
-                <div class="player-name">${player.name} ${player.op ? '⭐' : ''}</div>
-                <div class="player-details">Пинг: ${player.ping}ms</div>
-            </div>
-            <div class="player-actions">
-                <button class="player-action-btn" title="Кикнуть" onclick="kickPlayer('${player.name}')">
-                    <i class="fas fa-times"></i>
-                </button>
-                <button class="player-action-btn" title="Забанить" onclick="banPlayer('${player.name}')">
-                    <i class="fas fa-ban"></i>
-                </button>
-            </div>
-        `;
-        list.appendChild(card);
-    });
-}
-
+// ==================== PLAYERS ====================
 function kickPlayer(name) {
-    showNotification(`Игрок ${name} кикнут с сервера`, 'warning');
-
-    const output = document.getElementById('consoleOutput');
-    const line = document.createElement('div');
-    line.className = 'console-line warn';
-    line.textContent = `[Server] ${name} was kicked from the game`;
-    output.appendChild(line);
+  addConsole('warn', `[INFO] ${name} was kicked from the game`);
+  notify(`🚫 ${name} кикнут!`);
 }
 
-function banPlayer(name) {
-    showNotification(`Игрок ${name} забанен`, 'error');
-
-    const output = document.getElementById('consoleOutput');
-    const line = document.createElement('div');
-    line.className = 'console-line error';
-    line.textContent = `[Server] Banned player ${name}`;
-    output.appendChild(line);
+function banPlayer() {
+  const inp = document.getElementById('banInput');
+  const name = inp.value.trim();
+  if (!name) { notify('Введи ник!'); return; }
+  banned.push(name);
+  inp.value = '';
+  document.getElementById('banList').innerHTML = banned.map(n =>
+    `<div style="padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04)">🚫 ${n}
+     <button class="kick-btn" onclick="unban('${n}',this)" style="margin-left:10px;border-color:rgba(34,197,94,0.25);color:var(--green)">Разбанить</button>
+    </div>`
+  ).join('');
+  addConsole('warn', `[INFO] ${name} was banned`);
+  notify(`🚫 ${name} забанен!`);
 }
 
-// ===== Бэкапы =====
-function createBackup() {
-    showNotification('Создание резервной копии...', 'info');
-
-    setTimeout(() => {
-        const now = new Date();
-        const dateStr = now.toISOString().slice(0, 10);
-        const timeStr = now.toTimeString().slice(0, 5).replace(':', '-');
-        const name = `backup_${dateStr}_${timeStr}.zip`;
-
-        showNotification(`Резервная копия ${name} создана!`, 'success');
-
-        // Добавить в список
-        const list = document.querySelector('.backups-list');
-        if (list) {
-            const item = document.createElement('div');
-            item.className = 'backup-item';
-            item.style.animation = 'slideIn 0.3s ease';
-            item.innerHTML = `
-                <div class="backup-info">
-                    <i class="fas fa-archive"></i>
-                    <div>
-                        <span class="backup-name">${name}</span>
-                        <span class="backup-size">${(Math.random() * 50 + 130).toFixed(1)} MB • Ручной</span>
-                    </div>
-                </div>
-                <div class="backup-actions">
-                    <button class="btn btn-small btn-outline"><i class="fas fa-download"></i></button>
-                    <button class="btn btn-small btn-outline"><i class="fas fa-undo"></i></button>
-                    <button class="btn btn-small btn-danger"><i class="fas fa-trash"></i></button>
-                </div>
-            `;
-            list.prepend(item);
-        }
-    }, 2000);
+function unban(name, btn) {
+  const idx = banned.indexOf(name);
+  if (idx > -1) banned.splice(idx, 1);
+  btn.closest('div').remove();
+  if (banned.length === 0) document.getElementById('banList').textContent = 'Бан-лист пуст';
+  addConsole('ok', `[INFO] ${name} was unbanned`);
+  notify(`✅ ${name} разбанен`);
 }
 
-// ===== Плавный скролл =====
-function scrollTo(selector) {
-    document.querySelector(selector).scrollIntoView({ behavior: 'smooth' });
+// ==================== SETTINGS ====================
+function saveSettings() {
+  updateSrvAddr();
+  notify('💾 Настройки сохранены!');
+  addConsole('ok', '[INFO] Server settings updated');
 }
 
-// ===== Инициализация начальных стилей для анимации =====
-document.querySelectorAll('.feature-card, .step').forEach(el => {
-    el.style.opacity = '0';
-    el.style.transform = 'translateY(30px)';
-    el.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+function updateSrvAddr() {
+  const name = document.getElementById('setName');
+  if (!name) return;
+  const slug = name.value.trim().toLowerCase().replace(/[^a-z0-9а-яё]/gi, '').slice(0, 20) || 'myserver';
+  const addr = 'play.' + slug + '.Galaxy';
+  const el = document.getElementById('srvAddr');
+  if (el) el.textContent = addr;
+}
+
+// ==================== PLUGINS ====================
+function handlePluginUpload(files) {
+  if (!files || !files.length) return;
+  Array.from(files).forEach(f => {
+    if (!f.name.endsWith('.jar')) { notify('❌ Нужен .jar файл!'); return; }
+    const name = f.name.replace('.jar', '');
+    const grid = document.getElementById('pluginList');
+    const card = document.createElement('div');
+    card.className = 'plugin-card';
+    card.innerHTML = `
+      <div class="plugin-head">
+        <div class="plugin-icon">🔌</div>
+        <div>
+          <div class="plugin-name">${name}</div>
+          <div class="plugin-ver">Загружен <span class="installed-badge">Установлен</span></div>
+        </div>
+      </div>
+      <div class="plugin-desc">Загружен: ${f.name} (${(f.size / 1024).toFixed(1)} КБ)</div>
+      <div class="plugin-actions">
+        <button class="p-btn p-btn-edit" onclick="openEditor('plugins/${name}/config.yml','${name}')">📝 Настроить</button>
+        <button class="p-btn p-btn-remove" onclick="removePlugin('${name}',this)">🗑️ Удалить</button>
+      </div>`;
+    grid.appendChild(card);
+    addConsole('ok', `[INFO] Plugin ${f.name} loaded`);
+    notify(`✅ Плагин ${name} установлен!`);
+  });
+}
+
+function removePlugin(name, btn) {
+  btn.closest('.plugin-card').remove();
+  addConsole('warn', `[INFO] ${name} removed`);
+  notify(`🗑️ ${name} удалён`);
+}
+
+function openEditor(path, pluginName) {
+  goPage('editor', document.querySelectorAll('.sidebar-btn')[8]);
+  document.getElementById('editorFilename').textContent = path;
+  document.getElementById('editorLang').textContent = 'yaml';
+  document.getElementById('editorArea').value =
+    `# ${pluginName} Configuration\n# Galaxy Hosting\n\nenabled: true\ndebug: false\n\nsettings:\n  prefix: "&b[${pluginName}]&r"\n  language: ru\n  auto-save: true\n\nmessages:\n  no-permission: "&cУ тебя нет прав!"\n  reloaded: "&aКонфиг перезагружен!"`;
+}
+
+function loadPluginConfig(name) {
+  openEditor(`plugins/${name}/config.yml`, name);
+}
+
+// ==================== MODS ====================
+function handleModUpload(files) {
+  if (!files || !files.length) return;
+  Array.from(files).forEach(f => {
+    if (!f.name.endsWith('.jar')) { notify('❌ Нужен .jar файл!'); return; }
+    const name = f.name.replace('.jar', '');
+    const grid = document.getElementById('modList');
+    const card = document.createElement('div');
+    card.className = 'plugin-card';
+    card.innerHTML = `
+      <div class="plugin-head">
+        <div class="plugin-icon">📦</div>
+        <div>
+          <div class="plugin-name">${name}</div>
+          <div class="plugin-ver">Загружен <span class="installed-badge">Установлен</span></div>
+        </div>
+      </div>
+      <div class="plugin-desc">Мод загружен: ${f.name} (${(f.size / 1024).toFixed(1)} КБ)</div>
+      <div class="plugin-actions">
+        <button class="p-btn p-btn-remove" onclick="removePlugin('${name}',this)">🗑️ Удалить</button>
+      </div>`;
+    grid.appendChild(card);
+    addConsole('ok', `[INFO] Mod ${f.name} loaded`);
+    notify(`✅ Мод ${name} установлен!`);
+  });
+}
+
+// ==================== WORLDS ====================
+function handleWorldUpload(files) {
+  if (!files || !files.length) return;
+  const f = files[0];
+  const name = f.name.replace('.zip', '');
+  const grid = document.getElementById('worldList');
+  const card = document.createElement('div');
+  card.className = 'world-card';
+  card.innerHTML = `
+    <div class="world-icon">🌍</div>
+    <div class="world-name">${name}</div>
+    <div class="world-info">Загружен • ${(f.size / 1024 / 1024).toFixed(1)} МБ</div>
+    <div class="world-actions">
+      <button class="p-btn p-btn-install" onclick="notify('🌍 Мир ${name} — основной')">✅ Основной</button>
+      <button class="p-btn p-btn-edit" onclick="notify('📥 Скачивание...')">📥 Скачать</button>
+      <button class="p-btn p-btn-remove" onclick="deleteWorld('${name}',this.closest('.world-card'))">🗑️ Удалить</button>
+    </div>`;
+  grid.appendChild(card);
+  addConsole('ok', `[INFO] World ${name} uploaded`);
+  notify(`✅ Мир ${name} загружен!`);
+}
+
+function deleteWorld(name, card) {
+  if (card) card.remove();
+  addConsole('warn', `[INFO] World ${name} deleted`);
+  notify(`🗑️ Мир ${name} удалён`);
+}
+
+function recreateWorld() {
+  const seed = document.getElementById('newSeed').value.trim() || Math.floor(Math.random() * 999999999);
+  addConsole('warn', '[INFO] Deleting old world...');
+  setTimeout(() => addConsole('ok', `[INFO] New world created. Seed: ${seed}`), 800);
+  notify(`🔄 Мир пересоздан! Сид: ${seed}`);
+}
+
+// ==================== FILES ====================
+function openFolder(name) {
+  currentPath += name + '/';
+  document.getElementById('filePath').textContent = '📂 ' + currentPath;
+  notify('📂 ' + name);
+}
+
+function goBack() {
+  const parts = currentPath.split('/').filter(Boolean);
+  if (parts.length > 2) {
+    parts.pop();
+    currentPath = '/' + parts.join('/') + '/';
+  } else {
+    currentPath = '/home/server/';
+  }
+  document.getElementById('filePath').textContent = '📂 ' + currentPath;
+}
+
+function openFile(name) {
+  goPage('editor', document.querySelectorAll('.sidebar-btn')[8]);
+  document.getElementById('editorFilename').textContent = name;
+  const ext = name.split('.').pop();
+  document.getElementById('editorLang').textContent = ext;
+
+  const contents = {
+    'server.properties': '# Minecraft server properties\nserver-port=25565\ngamemode=survival\ndifficulty=normal\nmax-players=20\nmotd=\\u00a7b\\u00a7lGalaxy Server\nonline-mode=false\npvp=true\nenable-command-block=false\nallow-flight=false\nview-distance=10\nlevel-name=world\nwhite-list=false',
+    'bukkit.yml': '# Bukkit Configuration\nsettings:\n  allow-end: true\n  warn-on-overload: true\n  permissions-file: permissions.yml\n  connection-throttle: 4000\n  shutdown-message: Server closed',
+    'spigot.yml': '# Spigot Configuration\nsettings:\n  bungeecord: false\n  timeout-time: 60\n  restart-on-crash: true\n  log-villager-deaths: true',
+    'eula.txt': '# Minecraft EULA\neula=true',
+  };
+
+  document.getElementById('editorArea').value = contents[name] || `# ${name}\n# Редактируй файл здесь`;
+}
+
+function saveFile() {
+  const name = document.getElementById('editorFilename').textContent;
+  addConsole('ok', `[INFO] File saved: ${name}`);
+  notify(`💾 ${name} сохранён!`);
+}
+
+function handleFileUpload(files) {
+  if (!files || !files.length) return;
+  const list = document.getElementById('fileList');
+  Array.from(files).forEach(f => {
+    const li = document.createElement('li');
+    li.className = 'file-item';
+    li.ondblclick = () => openFile(f.name);
+    li.innerHTML = `
+      <span class="file-icon">📄</span>
+      <span class="file-name">${f.name}</span>
+      <span class="file-size">${(f.size / 1024).toFixed(1)} КБ</span>
+      <div class="file-actions">
+        <button class="kick-btn" onclick="event.stopPropagation();openFile('${f.name}')" style="border-color:rgba(124,58,237,0.25);color:var(--primary)">📝</button>
+        <button class="kick-btn" onclick="event.stopPropagation();this.closest('.file-item').remove();notify('🗑️ Удалён')">🗑️</button>
+      </div>`;
+    list.appendChild(li);
+    addConsole('ok', `[INFO] Uploaded: ${f.name}`);
+  });
+  notify(`📤 ${files.length} файл(ов) загружено`);
+}
+
+function deleteFile(name) {
+  notify(`🗑️ ${name} удалён`);
+  addConsole('warn', `[INFO] Deleted: ${name}`);
+}
+
+function createNewFile() {
+  const name = prompt('Имя нового файла:');
+  if (!name) return;
+  const list = document.getElementById('fileList');
+  const li = document.createElement('li');
+  li.className = 'file-item';
+  li.ondblclick = () => openFile(name);
+  li.innerHTML = `
+    <span class="file-icon">📄</span>
+    <span class="file-name">${name}</span>
+    <span class="file-size">0 КБ</span>
+    <div class="file-actions">
+      <button class="kick-btn" onclick="event.stopPropagation();openFile('${name}')" style="border-color:rgba(124,58,237,0.25);color:var(--primary)">📝</button>
+      <button class="kick-btn" onclick="event.stopPropagation();this.closest('.file-item').remove()">🗑️</button>
+    </div>`;
+  list.appendChild(li);
+  notify(`📄 Файл ${name} создан`);
+}
+
+function createNewFolder() {
+  const name = prompt('Имя новой папки:');
+  if (!name) return;
+  const list = document.getElementById('fileList');
+  const li = document.createElement('li');
+  li.className = 'file-item';
+  li.ondblclick = () => openFolder(name);
+  li.innerHTML = `
+    <span class="file-icon">📁</span>
+    <span class="file-name">${name}/</span>
+    <span class="file-size">—</span>
+    <div class="file-actions">
+      <button class="kick-btn" onclick="event.stopPropagation();this.closest('.file-item').remove()">🗑️</button>
+    </div>`;
+  list.prepend(li);
+  notify(`📁 Папка ${name} создана`);
+}
+
+// ==================== NOTIFY ====================
+function notify(msg) {
+  const el = document.getElementById('notif');
+  document.getElementById('notifText').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  updateSrvAddr();
+
+  const nameInput = document.getElementById('setName');
+  if (nameInput) nameInput.addEventListener('input', updateSrvAddr);
 });
-
-// Trigger initial animation check
-setTimeout(animateOnScroll, 100);
