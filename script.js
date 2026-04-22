@@ -1,377 +1,197 @@
-// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
-let isRunning = false;
-let ram = 0;
-let cpu = 0;
-let players = 0;
-let uptime = 0;
-let uptimeTimer = null;
-let activityTimer = null;
-let serverName = 'myserver';
+// --- Элементы DOM ---
+const balanceEl = document.getElementById('balance');
+const clickPowerEl = document.getElementById('click-power');
+const autoPerSecondEl = document.getElementById('auto-per-second');
+const bitcoinButton = document.getElementById('bitcoin-button');
+const upgradesListEl = document.getElementById('upgrades-list');
+const rebirthButton = document.getElementById('rebirth-button');
+const rebirthMultiplierEl = document.getElementById('rebirth-multiplier');
+const rebirthCostEl = document.getElementById('rebirth-cost');
 
-// МОДАЛЬНЫЕ ОКНА
-function openLogin() {
-    document.getElementById('loginModal').classList.add('active');
-}
+// --- Игровое состояние ---
+let gameState = {
+    balance: 0.00000001,
+    clickPower: 0.00000001,
+    autoClickRate: 0.0,
+    rebirths: 0,
+};
 
-function closeLogin() {
-    document.getElementById('loginModal').classList.remove('active');
-}
-
-function openRegister() {
-    document.getElementById('registerModal').classList.add('active');
-}
-
-function closeRegister() {
-    document.getElementById('registerModal').classList.remove('active');
-}
-
-// ВХОД
-function doLogin() {
-    closeLogin();
-    showDashboard();
-    log('[GalaxyHosting] ✅ Успешный вход');
-}
-
-// РЕГИСТРАЦИЯ
-function doRegister() {
-    closeRegister();
-    showDashboard();
-    log('[GalaxyHosting] ✅ Аккаунт создан!');
-    updateIP();
-}
-
-// ПОКАЗАТЬ ПАНЕЛЬ
-function showDashboard() {
-    document.getElementById('home').style.display = 'none';
-    document.getElementById('features').style.display = 'none';
-    document.querySelector('.navbar').style.display = 'none';
-    document.getElementById('dashboard').classList.add('active');
-}
-
-// ВЫХОД
-function doLogout() {
-    if (isRunning) {
-        if (!confirm('⚠️ Сервер запущен! Выйти?')) return;
-        stopServer();
+// --- Данные об улучшениях ---
+const upgrades = [
+    {
+        id: 'click_power_1',
+        name: 'Улучшенная мышь',
+        description: 'Увеличивает доход за клик',
+        type: 'click',
+        baseCost: 0.00001,
+        power: 0.00000001,
+        level: 0,
+        costMultiplier: 1.15
+    },
+    {
+        id: 'autoclick_1',
+        name: 'Старый ноутбук',
+        description: 'Начинает пассивный майнинг',
+        type: 'auto',
+        baseCost: 0.0001,
+        power: 0.0000001,
+        level: 0,
+        costMultiplier: 1.20
+    },
+    {
+        id: 'click_power_2',
+        name: 'Механическая клавиатура',
+        description: 'Значительно увеличивает доход за клик',
+        type: 'click',
+        baseCost: 0.001,
+        power: 0.000001,
+        level: 0,
+        costMultiplier: 1.18
+    },
+    {
+        id: 'autoclick_2',
+        name: 'Майнинг-ферма',
+        description: 'Мощный пассивный доход',
+        type: 'auto',
+        baseCost: 0.01,
+        power: 0.00001,
+        level: 0,
+        costMultiplier: 1.25
+    },
+    {
+        id: 'autoclick_3',
+        name: 'Квантовый компьютер',
+        description: 'Запредельный пассивный доход',
+        type: 'auto',
+        baseCost: 0.1,
+        power: 0.0001,
+        level: 0,
+        costMultiplier: 1.3
     }
-    document.getElementById('dashboard').classList.remove('active');
-    document.querySelector('.navbar').style.display = 'block';
-    document.getElementById('home').style.display = 'flex';
-    document.getElementById('features').style.display = 'block';
+];
+
+// --- Стоимость перерождения ---
+const REBIRTH_BASE_COST = 1.0;
+
+// --- Вспомогательные функции ---
+function formatNumber(num) {
+    // Используем toFixed(8), чтобы всегда было 8 знаков после запятой, как у биткоина
+    return num.toFixed(8);
 }
 
-// ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК
-function switchTab(tab) {
-    const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(t => t.classList.remove('active'));
-    document.getElementById('tab-' + tab).classList.add('active');
+function getRebirthMultiplier() {
+    // Каждое перерождение дает +100% к базе (т.е. +1 к множителю)
+    return 1 + gameState.rebirths;
 }
 
-// ЗАПУСК СЕРВЕРА
-function startServer() {
-    if (isRunning) {
-        alert('⚠️ Сервер уже запущен!');
-        return;
-    }
+// --- Функции обновления ---
+function updateDisplay() {
+    const multiplier = getRebirthMultiplier();
+    
+    balanceEl.textContent = formatNumber(gameState.balance);
+    clickPowerEl.textContent = formatNumber(gameState.clickPower * multiplier);
+    autoPerSecondEl.textContent = formatNumber(gameState.autoClickRate * multiplier);
 
-    isRunning = true;
-    uptime = 0;
-    updateStatus();
+    // Обновляем улучшения
+    upgrades.forEach(upgrade => {
+        const cost = upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level);
+        const button = document.getElementById(`buy-${upgrade.id}`);
+        const costEl = document.getElementById(`cost-${upgrade.id}`);
+        const levelEl = document.getElementById(`level-${upgrade.id}`);
 
-    const version = document.getElementById('mcVersion').value;
-    const type = document.getElementById('serverType').value;
-    const ip = document.getElementById('serverIP').textContent;
+        if (button) {
+            costEl.textContent = formatNumber(cost);
+            levelEl.textContent = upgrade.level;
+            button.disabled = gameState.balance < cost;
+        }
+    });
 
-    log('[GalaxyHosting] ========================================');
-    log('[GalaxyHosting] 🚀 Запуск сервера...');
-    log('[GalaxyHosting] IP: ' + ip);
-    log('[GalaxyHosting] Версия: ' + version);
-    log('[GalaxyHosting] Тип: ' + type);
-
-    setTimeout(() => {
-        log('[' + type + '] Starting minecraft server version ' + version);
-    }, 1000);
-
-    setTimeout(() => {
-        log('[Minecraft] Loading libraries...');
-    }, 2000);
-
-    setTimeout(() => {
-        log('[Minecraft] Preparing level "world"');
-    }, 3000);
-
-    setTimeout(() => {
-        log('[Minecraft] Preparing spawn area: 0%');
-    }, 4000);
-
-    setTimeout(() => {
-        log('[Minecraft] Preparing spawn area: 47%');
-    }, 4500);
-
-    setTimeout(() => {
-        log('[Minecraft] Preparing spawn area: 83%');
-    }, 5000);
-
-    setTimeout(() => {
-        log('[Minecraft] Done! Server started successfully');
-        log('[Minecraft] Server is running on *:25565');
-        log('[GalaxyHosting] ✅ Сервер запущен!');
-        log('[GalaxyHosting] 📌 Подключайтесь: ' + ip);
-        startUptime();
-        startActivity();
-    }, 5500);
+    // Обновляем перерождение
+    const currentRebirthCost = REBIRTH_BASE_COST * Math.pow(10, gameState.rebirths);
+    rebirthCostEl.textContent = formatNumber(currentRebirthCost);
+    rebirthMultiplierEl.textContent = `x${getRebirthMultiplier()}`;
+    rebirthButton.disabled = gameState.balance < currentRebirthCost;
 }
 
-// ОСТАНОВКА СЕРВЕРА
-function stopServer() {
-    if (!isRunning) {
-        alert('⚠️ Сервер уже остановлен!');
-        return;
-    }
+// --- Функции покупки ---
+function buyUpgrade(upgradeId) {
+    const upgrade = upgrades.find(u => u.id === upgradeId);
+    if (!upgrade) return;
 
-    log('[GalaxyHosting] 🛑 Остановка сервера...');
-    log('[Minecraft] Stopping server');
-    log('[Minecraft] Saving worlds...');
+    const cost = upgrade.baseCost * Math.pow(upgrade.costMultiplier, upgrade.level);
 
-    setTimeout(() => {
-        log('[Minecraft] Saved the game');
-        log('[GalaxyHosting] ✅ Сервер остановлен');
-        isRunning = false;
-        ram = 0;
-        cpu = 0;
-        players = 0;
-        uptime = 0;
-        clearInterval(uptimeTimer);
-        clearInterval(activityTimer);
-        updateStatus();
-        updatePlayers([]);
-    }, 1500);
-}
+    if (gameState.balance >= cost) {
+        gameState.balance -= cost;
+        upgrade.level++;
 
-// ПЕРЕЗАПУСК
-function restartServer() {
-    if (!isRunning) {
-        startServer();
-        return;
-    }
-
-    log('[GalaxyHosting] 🔄 Перезапуск...');
-    isRunning = false;
-    clearInterval(uptimeTimer);
-    clearInterval(activityTimer);
-
-    setTimeout(() => {
-        startServer();
-    }, 2000);
-}
-
-// ОБНОВЛЕНИЕ СТАТУСА
-function updateStatus() {
-    const dot = document.getElementById('statusDot');
-    const text = document.getElementById('statusText');
-
-    if (isRunning) {
-        dot.classList.add('online');
-        text.textContent = '🟢 Онлайн';
-    } else {
-        dot.classList.remove('online');
-        text.textContent = '🔴 Оффлайн';
-    }
-
-    document.getElementById('ramDisplay').textContent = Math.round(ram) + ' MB / 6144 MB';
-    document.getElementById('ramProgress').style.width = (ram / 6144 * 100) + '%';
-    document.getElementById('playersDisplay').textContent = players + '/100';
-    document.getElementById('playerCount').textContent = players;
-    document.getElementById('cpuDisplay').textContent = cpu + '%';
-}
-
-// UPTIME
-function startUptime() {
-    uptimeTimer = setInterval(() => {
-        uptime++;
-        const h = Math.floor(uptime / 3600);
-        const m = Math.floor((uptime % 3600) / 60);
-        const s = uptime % 60;
-        document.getElementById('uptimeDisplay').textContent = 
-            pad(h) + ':' + pad(m) + ':' + pad(s);
-    }, 1000);
-}
-
-function pad(n) {
-    return n < 10 ? '0' + n : n;
-}
-
-// АКТИВНОСТЬ
-function startActivity() {
-    ram = 1200 + Math.random() * 300;
-
-    activityTimer = setInterval(() => {
-        if (!isRunning) return;
-
-        ram += Math.random() * 150 - 50;
-        ram = Math.max(1200, Math.min(5500, ram));
-
-        cpu = Math.floor(Math.random() * 40) + 20;
-
-        if (Math.random() > 0.85) {
-            const change = Math.floor(Math.random() * 3) - 1;
-            const old = players;
-            players = Math.max(0, Math.min(100, players + change));
-
-            if (players > old) {
-                const name = 'Player' + Math.floor(Math.random() * 999);
-                log('[Minecraft] ' + name + ' joined the game');
-            } else if (players < old) {
-                const name = 'Player' + Math.floor(Math.random() * 999);
-                log('[Minecraft] ' + name + ' left the game');
-            }
+        if (upgrade.type === 'click') {
+            gameState.clickPower += upgrade.power;
+        } else if (upgrade.type === 'auto') {
+            gameState.autoClickRate += upgrade.power;
         }
 
-        updateStatus();
-    }, 3000);
-}
-
-// ЛОГИ
-function log(msg) {
-    const output = document.getElementById('consoleOutput');
-    const line = document.createElement('div');
-    line.className = 'console-line';
-    const time = new Date().toLocaleTimeString();
-    line.textContent = '[' + time + '] ' + msg;
-    output.appendChild(line);
-    output.scrollTop = output.scrollHeight;
-}
-
-// КОМАНДЫ
-function sendCommand() {
-    const input = document.getElementById('consoleInput');
-    const cmd = input.value.trim();
-
-    if (!cmd) return;
-
-    if (!isRunning) {
-        log('[GalaxyHosting] ⚠️ Сервер не запущен!');
-        input.value = '';
-        return;
+        updateDisplay();
     }
+}
 
-    log('> ' + cmd);
+// --- Функция перерождения ---
+function performRebirth() {
+    const currentRebirthCost = REBIRTH_BASE_COST * Math.pow(10, gameState.rebirths);
+    if (gameState.balance >= currentRebirthCost) {
+        gameState.rebirths++;
+        
+        // Сброс состояния
+        gameState.balance = 0.00000001;
+        gameState.clickPower = 0.00000001;
+        gameState.autoClickRate = 0.0;
+        upgrades.forEach(u => u.level = 0);
+        
+        alert(`Поздравляем с перерождением! Ваш множитель дохода теперь x${getRebirthMultiplier()}.`);
+        
+        updateDisplay();
+    }
+}
 
-    setTimeout(() => {
-        if (cmd === 'stop') {
-            stopServer();
-        } else if (cmd === 'list') {
-            log('[Minecraft] There are ' + players + ' of max 100 players online');
-        } else if (cmd.startsWith('say ')) {
-            log('[Server] ' + cmd.substring(4));
-        } else if (cmd === 'help') {
-            log('[Minecraft] Commands: stop, list, say, op, kick, save-all');
-        } else if (cmd.startsWith('op ')) {
-            log('[Minecraft] Made ' + cmd.substring(3) + ' a server operator');
-        } else if (cmd === 'save-all') {
-            log('[Minecraft] Saving...');
-            setTimeout(() => log('[Minecraft] Saved the game'), 500);
-        } else {
-            log('[Minecraft] Command executed');
+
+// --- Инициализация игры ---
+function initializeGame() {
+    // Создаем элементы для улучшений
+    upgrades.forEach(upgrade => {
+        const item = document.createElement('div');
+        item.className = 'upgrade-item';
+        item.innerHTML = `
+            <p class="upgrade-title">${upgrade.name} (Уровень <span id="level-${upgrade.id}">${upgrade.level}</span>)</p>
+            <p class="upgrade-stats">${upgrade.description}: +${formatNumber(upgrade.power)}</p>
+            <button id="buy-${upgrade.id}">
+                Купить за <span id="cost-${upgrade.id}">${formatNumber(upgrade.baseCost)}</span> BTC
+            </button>
+        `;
+        upgradesListEl.appendChild(item);
+    });
+
+    // Добавляем обработчики событий
+    upgrades.forEach(upgrade => {
+        document.getElementById(`buy-${upgrade.id}`).addEventListener('click', () => buyUpgrade(upgrade.id));
+    });
+
+    bitcoinButton.addEventListener('click', () => {
+        gameState.balance += gameState.clickPower * getRebirthMultiplier();
+        updateDisplay();
+    });
+    
+    rebirthButton.addEventListener('click', performRebirth);
+
+    // Игровой цикл (для пассивного дохода)
+    setInterval(() => {
+        if (gameState.autoClickRate > 0) {
+            gameState.balance += gameState.autoClickRate * getRebirthMultiplier();
+            updateDisplay();
         }
-    }, 200);
+    }, 1000); // Каждую секунду
 
-    input.value = '';
+    // Первоначальное отображение
+    updateDisplay();
 }
 
-// ENTER для команд
-document.addEventListener('DOMContentLoaded', () => {
-    const input = document.getElementById('consoleInput');
-    if (input) {
-        input.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendCommand();
-        });
-    }
-});
-
-// КОПИРОВАТЬ IP
-function copyIP() {
-    const ip = document.getElementById('serverIP').textContent;
-    
-    if (navigator.clipboard) {
-        navigator.clipboard.writeText(ip).then(() => {
-            alert('✅ IP скопирован: ' + ip);
-        });
-    } else {
-        const textarea = document.createElement('textarea');
-        textarea.value = ip;
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-        alert('✅ IP скопирован: ' + ip);
-    }
-}
-
-// ОБНОВИТЬ IP
-function updateIP() {
-    const name = document.getElementById('serverName').value.toLowerCase().replace(/[^a-z0-9]/g, '');
-    serverName = name || 'myserver';
-    const ip = 'play.' + serverName + '.galaxy';
-    document.getElementById('serverIP').textContent = ip;
-    log('[GalaxyHosting] IP обновлён: ' + ip);
-}
-
-// СОХРАНИТЬ НАСТРОЙКИ
-function saveSettings() {
-    updateIP();
-    
-    const version = document.getElementById('mcVersion').value;
-    const type = document.getElementById('serverType').value;
-    
-    log('[GalaxyHosting] 💾 Сохранение настроек...');
-    
-    setTimeout(() => {
-        log('[GalaxyHosting] Версия: ' + version);
-        log('[GalaxyHosting] Тип: ' + type);
-        log('[GalaxyHosting] ✅ Настройки сохранены!');
-        
-        document.getElementById('versionDisplay').textContent = version;
-        
-        alert('✅ Настройки сохранены!\n\n⚠️ Перезапустите сервер');
-    }, 500);
-}
-
-// БЭКАП
-function createBackup() {
-    log('[GalaxyHosting] 💾 Создание бэкапа...');
-    
-    let progress = 0;
-    const interval = setInterval(() => {
-        progress += 20;
-        log('[GalaxyHosting] Прогресс: ' + progress + '%');
-        
-        if (progress >= 100) {
-            clearInterval(interval);
-            const date = new Date().toLocaleString();
-            const size = Math.floor(Math.random() * 500 + 100);
-            log('[GalaxyHosting] ✅ Бэкап создан!');
-            alert('✅ Бэкап создан!\n\nДата: ' + date + '\nРазмер: ' + size + ' MB');
-        }
-    }, 300);
-}
-
-// СПИСОК ИГРОКОВ
-function updatePlayers(list) {
-    const playerList = document.getElementById('playerList');
-    
-    if (list.length === 0) {
-        playerList.innerHTML = '<div class="empty-state">Нет игроков онлайн</div>';
-    } else {
-        playerList.innerHTML = list.map(name => 
-            '<div style="padding: 10px; background: rgba(108, 99, 255, 0.1); margin: 5px 0; border-radius: 5px;">👤 ' + name + '</div>'
-        ).join('');
-    }
-}
-
-// ИНИЦИАЛИЗАЦИЯ
-document.addEventListener('DOMContentLoaded', () => {
-    updateStatus();
-    log('[GalaxyHosting] 🌌 Система загружена');
-    log('[GalaxyHosting] 📌 Готов к работе!');
-});
+// --- Запуск игры ---
+initializeGame();
